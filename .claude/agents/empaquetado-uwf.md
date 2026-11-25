@@ -19,7 +19,7 @@ delante del equipo: si el paquete está mal, el fallo se descubre allí, no aqu�
 
 En ambos casos, la primera ejecución en un equipo **se autoinstala**: se copia a
 `C:\ProgramData\UWF-Aulas\`, borra la tarea `UWF-Aulas-Vigilante` de versiones
-anteriores si existe y crea `UWF Aulas.lnk` en el escritorio público.
+anteriores si existe y crea `UWF Aulas.lnk` solo en el escritorio del usuario que instala.
 
 ## Compilar
 

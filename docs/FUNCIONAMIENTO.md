@@ -115,7 +115,7 @@ Cada vez que se abre la interfaz (como administrador):
    `uwfmgr file commit`.
 3. Se borra la tarea `UWF-Aulas-Vigilante` de versiones anteriores, si existe, y el
    `estado.json` que usaba.
-4. Se crea el acceso directo `UWF Aulas.lnk` en el escritorio publico.
+4. Se crea el acceso directo `UWF Aulas.lnk` solo en el escritorio del usuario que instala; su ruta se guarda en `config.json` (`accesoDirecto`) para que las actualizaciones no creen otros. Si quedaba uno en el escritorio publico de versiones anteriores, se borra.
 
 Si no se puede sustituir la copia instalada, la interfaz **lo avisa**: el acceso directo
 seguiria abriendo la version anterior.
