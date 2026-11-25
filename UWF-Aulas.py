@@ -1377,10 +1377,47 @@ def registrar_tarea_actualizacion():
             pass
 
 
-def crear_acceso_directo():
-    """Crea el acceso directo 'UWF Aulas.lnk' en el escritorio publico, apuntando a la copia instalada."""
+def _acceso_directo_publico():
+    return os.path.join(os.environ.get('PUBLIC', r'C:\Users\Public'), 'Desktop', 'UWF Aulas.lnk')
+
+
+def _destino_acceso_directo(ws):
+    """El acceso directo va solo al escritorio del usuario que instala, que es quien maneja la
+    herramienta. Su ruta queda en config.json: las ejecuciones posteriores (la de otro
+    administrador o la actualizacion semanal como SYSTEM) solo refrescan ese, nunca crean otro.
+    Devuelve None si no hay que crear ninguno."""
+    cfg = leer_config()
+    guardado = cfg.get('accesoDirecto') or ''
+    if guardado and os.path.isdir(os.path.dirname(guardado)):
+        return guardado
+    escritorio = ws.SpecialFolders('Desktop')
+    if not escritorio or 'systemprofile' in escritorio.lower():
+        # SYSTEM no tiene escritorio de usuario: instalaciones anteriores conservan el publico
+        # hasta que el tecnico abra la herramienta
+        publico = _acceso_directo_publico()
+        return publico if os.path.isfile(publico) else None
+    destino = os.path.join(escritorio, 'UWF Aulas.lnk')
+    cfg['accesoDirecto'] = destino
+    guardar_config(cfg)
+    return destino
+
+
+def _quitar_acceso_directo_publico(excepto):
+    """Las versiones anteriores lo dejaban en el escritorio publico, visible para todos."""
+    publico = _acceso_directo_publico()
+    if os.path.normcase(publico) == os.path.normcase(excepto) or not os.path.isfile(publico):
+        return
     try:
-        destino = os.path.join(os.environ.get('PUBLIC', r'C:\Users\Public'), 'Desktop', 'UWF Aulas.lnk')
+        os.remove(publico)
+        persistir_en_disco(publico, borrado=True)
+    except OSError:
+        pass
+
+
+def crear_acceso_directo():
+    """Crea el acceso directo 'UWF Aulas.lnk' en el escritorio del usuario que instala,
+    apuntando a la copia instalada."""
+    try:
         if Congelado:
             objetivo, argumentos, icono = ScriptDest, '', '%s,0' % ScriptDest
         else:
@@ -1392,7 +1429,11 @@ def crear_acceso_directo():
         import win32com.client
         pythoncom.CoInitialize()
         try:
-            lnk = win32com.client.Dispatch('WScript.Shell').CreateShortcut(destino)
+            ws = win32com.client.Dispatch('WScript.Shell')
+            destino = _destino_acceso_directo(ws)
+            if not destino:
+                return
+            lnk = ws.CreateShortcut(destino)
             lnk.TargetPath = objetivo
             lnk.Arguments = argumentos
             lnk.WorkingDirectory = Base
@@ -1402,6 +1443,7 @@ def crear_acceso_directo():
         finally:
             pythoncom.CoUninitialize()
         persistir_en_disco(destino)
+        _quitar_acceso_directo_publico(destino)
     except Exception as ex:
         escribir_log('AccesoDirecto', 'ERROR', str(ex).replace(';', ','))
 

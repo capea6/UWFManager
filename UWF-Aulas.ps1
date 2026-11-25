@@ -1236,9 +1236,43 @@ function Registrar-TareaActualizacion {
     }
 }
 
+function Get-DestinoAccesoDirecto {
+    # El acceso directo va solo al escritorio del usuario que instala, que es quien maneja la
+    # herramienta. Su ruta queda en config.json: las ejecuciones posteriores (la de otro
+    # administrador o la actualizacion semanal como SYSTEM) solo refrescan ese, nunca crean
+    # otro. Devuelve $null si no hay que crear ninguno.
+    $cfg = Leer-Config
+    $guardado = [string]$cfg.accesoDirecto
+    if ($guardado -and (Test-Path -LiteralPath (Split-Path $guardado))) { return $guardado }
+    if ([Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) {
+        # Instalaciones anteriores: SYSTEM no tiene escritorio de usuario. Se refresca el del
+        # escritorio publico si sigue existiendo y se migra la proxima vez que lo abra el tecnico.
+        $publico = Join-Path (Join-Path $env:PUBLIC 'Desktop') 'UWF Aulas.lnk'
+        if (Test-Path -LiteralPath $publico) { return $publico }
+        return $null
+    }
+    $escritorio = [Environment]::GetFolderPath('Desktop')
+    if (-not $escritorio) { return $null }
+    $destino = Join-Path $escritorio 'UWF Aulas.lnk'
+    $cfg | Add-Member -NotePropertyName accesoDirecto -NotePropertyValue $destino -Force
+    Guardar-Config $cfg
+    return $destino
+}
+
+function Quitar-AccesoDirectoPublico([string]$Excepto) {
+    # Las versiones anteriores lo dejaban en el escritorio publico, visible para todos
+    $publico = Join-Path (Join-Path $env:PUBLIC 'Desktop') 'UWF Aulas.lnk'
+    if ($publico -ieq $Excepto -or -not (Test-Path -LiteralPath $publico)) { return }
+    try {
+        Remove-Item -LiteralPath $publico -Force -ErrorAction Stop
+        Persistir-EnDisco $publico -Borrado
+    } catch { }
+}
+
 function Crear-AccesoDirecto {
     try {
-        $destino = Join-Path (Join-Path $env:PUBLIC 'Desktop') 'UWF Aulas.lnk'
+        $destino = Get-DestinoAccesoDirecto
+        if (-not $destino) { return }
         $ws  = New-Object -ComObject WScript.Shell
         $lnk = $ws.CreateShortcut($destino)
         # El .bat pide elevacion por si mismo; lo instala la actualizacion semanal
@@ -1255,6 +1289,7 @@ function Crear-AccesoDirecto {
         $lnk.Description      = 'Gestion del Unified Write Filter'
         $lnk.Save()
         Persistir-EnDisco $destino
+        Quitar-AccesoDirectoPublico $destino
     } catch { }
 }
 

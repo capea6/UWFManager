@@ -91,7 +91,7 @@ cambios sin aplicar) y `uwf-aulas.log`.
   - Se copia a `C:\ProgramData\UWF-Aulas\`.
   - Borra la tarea programada `UWF-Aulas-Vigilante` que registraban las versiones
     anteriores, si existe.
-  - Crea el acceso directo `UWF Aulas.lnk` en el escritorio publico.
+  - Crea el acceso directo `UWF Aulas.lnk` solo en el escritorio del usuario que instala (y quita el del escritorio publico de versiones anteriores).
 - **Actualizar un equipo** es automatico desde la v6 (ver *Que hace* y
   [Publicar una version](#publicar-una-version)). Tambien se puede actualizar a mano, ejecutando
   la version nueva: compara por hash la
