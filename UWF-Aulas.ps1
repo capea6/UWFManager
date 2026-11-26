@@ -44,7 +44,7 @@ $script:LogPath    = Join-Path $script:Base 'uwf-aulas.log'
 $script:ScriptDest = Join-Path $script:Base 'UWF-Aulas.ps1'
 $script:Uwfmgr     = Join-Path $env:SystemRoot 'System32\uwfmgr.exe'
 $script:TareaAntigua = 'UWF-Aulas-Vigilante'   # tarea de arranque de versiones anteriores; se borra al abrir
-$script:Version    = '7.5'                       # subirlo en cada release: su etiqueta en GitHub es v<Version>
+$script:Version    = '7.6'                       # subirlo en cada release: su etiqueta en GitHub es v<Version>
 $script:TareaActualizacion = 'UWF-Aulas-Actualizacion'   # tarea semanal; ver Registrar-TareaActualizacion
 # Repositorios donde se buscan actualizaciones: se instala la release Latest de version mas alta
 $script:UrlsRelease = @(
