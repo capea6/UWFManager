@@ -55,8 +55,10 @@ garantias de seguridad y diagnostico de problemas) esta explicado en
   La proteccion **no vuelve sola**: hasta pulsar *Finalizar*, el equipo sigue sin proteger y
   la interfaz lo avisa en rojo. Nada en segundo plano toca el filtro.
 - **Actualizacion automatica**: al activar la proteccion se registra la tarea semanal
-  `UWF-Aulas-Actualizacion`. Mira la
-  [ultima release](https://github.com/JoseMontanchez/UWFManager/releases) y, si es mas nueva,
+  `UWF-Aulas-Actualizacion`. Mira la ultima release de los dos repositorios,
+  [capea6](https://github.com/capea6/UWFManager/releases) y
+  [JoseMontanchez](https://github.com/JoseMontanchez/UWFManager/releases), se queda con la de
+  version mas alta y, si es mas nueva que la instalada,
   descarga su `UWF-Aulas.zip`, comprueba que su SHA-256 coincide con el que publica GitHub
   (si no, no instala nada), lo descomprime y sustituye los ficheros `.bat`, `.ps1`, `.py`,
   `.spec` y `.txt`. La tarea nunca toca el filtro.

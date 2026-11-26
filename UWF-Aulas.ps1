@@ -46,7 +46,11 @@ $script:Uwfmgr     = Join-Path $env:SystemRoot 'System32\uwfmgr.exe'
 $script:TareaAntigua = 'UWF-Aulas-Vigilante'   # tarea de arranque de versiones anteriores; se borra al abrir
 $script:Version    = '7.5'                       # subirlo en cada release: su etiqueta en GitHub es v<Version>
 $script:TareaActualizacion = 'UWF-Aulas-Actualizacion'   # tarea semanal; ver Registrar-TareaActualizacion
-$script:UrlRelease = 'https://api.github.com/repos/JoseMontanchez/UWFManager/releases/latest'
+# Repositorios donde se buscan actualizaciones: se instala la release Latest de version mas alta
+$script:UrlsRelease = @(
+    'https://api.github.com/repos/capea6/UWFManager/releases/latest',
+    'https://api.github.com/repos/JoseMontanchez/UWFManager/releases/latest'
+)
 $script:AssetRelease = 'UWF-Aulas.zip'        # fichero que adjunta a cada release .github/workflows/release.yml
 $script:ExtensionesActualizables = @('.bat', '.ps1', '.py', '.spec', '.txt')
 $script:DiasEntreComprobaciones = 7            # dias minimos entre dos consultas a GitHub
@@ -1116,22 +1120,43 @@ function Actualizar-DesdeRepositorio {
     # PowerShell 5.1 no activa TLS 1.2 por defecto y GitHub no acepta nada inferior
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    $release  = Invoke-RestMethod -Uri $script:UrlRelease -TimeoutSec 20 -UseBasicParsing `
-                    -UserAgent 'UWFManager' -Headers @{ Accept = 'application/vnd.github+json' }
-    $etiqueta = [string]$release.tag_name
-    if ((Get-NumeroVersion $etiqueta) -le (Get-NumeroVersion $script:Version)) {
+    # Se mira la Latest de cada repositorio de UrlsRelease y se queda la de version mas alta.
+    # Un repositorio que no responde o cuya release no se puede instalar (sin AssetRelease o
+    # sin SHA-256) se apunta como AVISO y se salta, para que no bloquee al otro. Solo si no
+    # responde ninguno se lanza el error y se reintenta en la siguiente ejecucion.
+    $elegida = $null
+    $respondidos = 0
+    foreach ($url in $script:UrlsRelease) {
+        try {
+            $release = Invoke-RestMethod -Uri $url -TimeoutSec 20 -UseBasicParsing `
+                           -UserAgent 'UWFManager' -Headers @{ Accept = 'application/vnd.github+json' }
+            $respondidos++
+            $etiqueta = [string]$release.tag_name
+            $version  = Get-NumeroVersion $etiqueta
+            if ($elegida -and $version -le $elegida.Version) { continue }
+            # Antes de descargar nada: sin SHA-256 publicado no hay con que comparar
+            $asset = @($release.assets | Where-Object { $_.name -ceq $script:AssetRelease }) | Select-Object -First 1
+            if (-not $asset) { throw "la release $etiqueta no trae $($script:AssetRelease)" }
+            $digest = ([string]$asset.digest).ToLower()
+            if ($digest -notmatch '^sha256:([0-9a-f]{64})$') {
+                throw "la release $etiqueta no publica el SHA-256 de $($script:AssetRelease)"
+            }
+            $elegida = [pscustomobject]@{
+                Version = $version; Etiqueta = $etiqueta; Asset = $asset; Huella = $Matches[1]; Url = $url
+            }
+        } catch {
+            Escribir-Log 'BuscarActualizacion' 'AVISO' ("{0}: {1}" -f $url,
+                ((($_.Exception.Message -replace ';', ',') -split '\s+') -join ' '))
+        }
+    }
+    if (-not $respondidos) { throw 'no responde ningun repositorio de actualizaciones' }
+    if (-not $elegida -or $elegida.Version -le (Get-NumeroVersion $script:Version)) {
         Anotar-Comprobacion
         return
     }
-
-    # Antes de descargar nada: sin SHA-256 publicado no hay con que comparar
-    $asset = @($release.assets | Where-Object { $_.name -ceq $script:AssetRelease }) | Select-Object -First 1
-    if (-not $asset) { throw "la release $etiqueta no trae $($script:AssetRelease)" }
-    $digest = ([string]$asset.digest).ToLower()
-    if ($digest -notmatch '^sha256:([0-9a-f]{64})$') {
-        throw "la release $etiqueta no publica el SHA-256 de $($script:AssetRelease)"
-    }
-    $huella = $Matches[1]
+    $etiqueta = $elegida.Etiqueta
+    $asset    = $elegida.Asset
+    $huella   = $elegida.Huella
 
     # Lo que haya dejado una ejecucion cortada a medias
     Get-ChildItem -LiteralPath $script:Base -Directory -Filter 'descarga-*' -ErrorAction SilentlyContinue |
@@ -1177,7 +1202,7 @@ function Actualizar-DesdeRepositorio {
             Copy-Item -LiteralPath $f.FullName -Destination $nuevo -Force
             Sustituir-Fichero $nuevo $destino
         }
-        Escribir-Log 'ActualizarInstalacion' 'OK' "actualizacion semanal a $etiqueta`: $($ficheros.Count) ficheros, sha256 $huella"
+        Escribir-Log 'ActualizarInstalacion' 'OK' "actualizacion semanal a $etiqueta ($($elegida.Url -replace '^https://api\.github\.com/repos/|/releases/latest$', ''))`: $($ficheros.Count) ficheros, sha256 $huella"
         Anotar-Comprobacion
         # El .exe no viene en el .zip: el acceso directo pasa a abrir lo que se acaba de actualizar
         Crear-AccesoDirecto

@@ -140,10 +140,14 @@ guardada; con el filtro activo el registro se perderia al reiniciar. Ejecuta
 1. Sale si no han pasado 7 dias desde la ultima comprobacion correcta (`ultimaComprobacion` en
    `config.json`). Hace falta esta cuenta porque el filtro hace olvidar a la tarea su ultima
    ejecucion.
-2. Consulta en la API de GitHub la release *Latest* (excluye borradores y *pre-releases*). Si su
-   etiqueta no es mayor que `$script:Version`, anota la fecha y termina.
-3. Busca en la release el fichero `UWF-Aulas.zip` y su SHA-256, que GitHub calcula al subirlo
-   (campo `digest` de la API). Si falta alguno de los dos, no descarga nada.
+2. Consulta en la API de GitHub la release *Latest* (excluye borradores y *pre-releases*) de
+   cada repositorio de `$script:UrlsRelease`: `capea6/UWFManager` y `JoseMontanchez/UWFManager`.
+   De cada una busca el fichero `UWF-Aulas.zip` y su SHA-256, que GitHub calcula al subirlo
+   (campo `digest` de la API).
+3. Se queda con la de version mas alta que tenga los dos. Un repositorio que no responde o cuya
+   release no trae el `.zip` o el SHA-256 se salta con un `BuscarActualizacion;AVISO` en el log;
+   solo si no responde ninguno es un error. Si la elegida no es mayor que `$script:Version`,
+   anota la fecha y termina.
 4. Descarga el `.zip` a una carpeta temporal dentro de la de trabajo, comprueba que su SHA-256
    coincide (si no, lo borra y no instala nada) y lo descomprime.
 5. Comprueba que `UWF-Aulas.ps1` existe, se puede parsear y sigue teniendo la funcion de
@@ -482,8 +486,9 @@ Lo que el codigo cuida para no dejar un equipo del aula roto o desprotegido:
   hubiera creado antes conserva sus propios permisos.
 - **Actualizacion con hash pero sin firma**: el SHA-256 del `UWF-Aulas.zip` se compara con
   el que publica GitHub, lo que descarta una descarga corrupta o alterada por el camino. Pero
-  el hash y el fichero vienen de la misma cuenta: quien la controle puede publicar una release
-  con su propio hash y ejecutar codigo como SYSTEM en todas las aulas. Solo lo evitaria firmar
+  el hash y el fichero vienen de la misma cuenta: quien controle **cualquiera de las dos**
+  (`capea6` o `JoseMontanchez`) puede publicar una release con su propio hash y un numero de
+  version mas alto, y ejecutar codigo como SYSTEM en todas las aulas. Solo lo evitaria firmar
   el `.ps1` y fijar la huella del certificado en el codigo. Una release defectuosa llega a
   todas igual.
 - **Respaldo por texto**: si WMI no responde, el consumo del overlay y la lista de
